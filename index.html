@@ -1218,17 +1218,73 @@ function aplicarPerfilNaTela(){
   }
 }
 
+
+window.abrirPainelComPerfil = async function(perfil) {
+  window.usuarioAtual = perfil;
+
+  const overlay = document.getElementById("loginOverlay");
+  if (overlay) overlay.style.display = "none";
+
+  if (typeof aplicarPerfilNaTela === "function") {
+    aplicarPerfilNaTela();
+  }
+
+  try {
+    if (typeof carregarGoogleSheets === "function") {
+      await carregarGoogleSheets();
+    }
+  } catch (e) {
+    console.warn("Falha ao recarregar Google Sheets após login:", e);
+  }
+
+  try {
+    if (typeof popularFiltros === "function") popularFiltros();
+    if (typeof render === "function") render();
+  } catch (e) {
+    console.error("Erro ao renderizar painel:", e);
+  }
+};
+
 window.fazerLoginFirebase = async function(){
   const email = document.getElementById("loginEmail").value.trim();
   const senha = document.getElementById("loginSenha").value.trim();
   const erro = document.getElementById("loginErro");
+
   erro.innerText = "Entrando...";
-  try{
-    await signInWithEmailAndPassword(auth, email, senha);
-    erro.innerText = "Validando acesso...";
-  }catch(e){
-    console.error(e);
-    erro.innerText = "E-mail ou senha inválidos.";
+
+  try {
+    const cred = await signInWithEmailAndPassword(auth, email, senha);
+
+    erro.innerText = "Validando perfil...";
+
+    const uid = cred.user.uid;
+    console.log("LOGIN OK UID:", uid);
+
+    const snap = await getDoc(doc(db, "USUARIOS", uid));
+
+    if (!snap.exists()) {
+      erro.innerText = "";
+      alert("Login feito, mas este usuário não tem perfil cadastrado na coleção USUARIOS. Confira se o ID do documento é o UID correto.");
+      await signOut(auth);
+      return;
+    }
+
+    const perfil = snap.data();
+    console.log("PERFIL ENCONTRADO:", perfil);
+
+    erro.innerText = "Carregando painel...";
+
+    await window.abrirPainelComPerfil(perfil);
+
+  } catch (e) {
+    console.error("ERRO LOGIN/FIRESTORE:", e);
+    erro.innerText = "";
+
+    if (String(e.code || "").includes("auth")) {
+      alert("E-mail ou senha inválidos.");
+    } else {
+      alert("Não consegui validar o perfil no Firestore. Confira regras, coleção USUARIOS e UID do usuário.");
+    }
   }
 };
 
@@ -1241,55 +1297,26 @@ onAuthStateChanged(auth, async (user) => {
   const overlay = document.getElementById("loginOverlay");
 
   if (!user) {
-    console.log("NÃO LOGADO");
     if (overlay) overlay.style.display = "flex";
     return;
   }
 
-  console.log("USUÁRIO LOGADO:", user.uid);
+  // Se já abriu via botão de login, não faz nada.
+  if (window.usuarioAtual) return;
 
   try {
     const snap = await getDoc(doc(db, "USUARIOS", user.uid));
 
     if (!snap.exists()) {
-      alert("Usuário autenticado, mas sem perfil criado na coleção USUARIOS.");
-      await signOut(auth);
+      if (overlay) overlay.style.display = "flex";
       return;
     }
 
-    window.usuarioAtual = snap.data();
-
-    console.log("PERFIL DO USUÁRIO:", window.usuarioAtual);
-
-    if (overlay) overlay.style.display = "none";
-
-    if (typeof aplicarPerfilNaTela === "function") {
-      aplicarPerfilNaTela();
-    }
-
-    // Força recarregar base e renderizar após o login
-    setTimeout(async () => {
-      try {
-        if (typeof carregarGoogleSheets === "function") {
-          await carregarGoogleSheets();
-        } else {
-          if (typeof popularFiltros === "function") popularFiltros();
-          if (typeof render === "function") render();
-        }
-      } catch (e) {
-        console.error("Erro ao carregar/renderizar após login:", e);
-        try {
-          if (typeof popularFiltros === "function") popularFiltros();
-          if (typeof render === "function") render();
-        } catch (e2) {
-          console.error("Erro final ao renderizar:", e2);
-        }
-      }
-    }, 600);
+    await window.abrirPainelComPerfil(snap.data());
 
   } catch (e) {
-    console.error("ERRO FIRESTORE:", e);
-    alert("Erro ao buscar perfil do usuário no Firestore. Confira as regras e se o UID está cadastrado em USUARIOS.");
+    console.error("Erro ao restaurar sessão:", e);
+    if (overlay) overlay.style.display = "flex";
   }
 });
 </script>
