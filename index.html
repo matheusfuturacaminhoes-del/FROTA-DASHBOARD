@@ -4,134 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard Diretoria - Controle de Frota</title>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js">
-const USUARIOS_ACESSO = {
-  "MATHEUS": {senha:"1234", perfil:"ADMIN", filtro:"TODOS", nome:"MATHEUS"},
-  "LAZARO": {senha:"1234", perfil:"ADMIN", filtro:"TODOS", nome:"LAZARO"},
-  "RAPHAEL": {senha:"1234", perfil:"CONSULTOR", filtro:"RAPHAEL", nome:"RAPHAEL"},
-  "GABRIELA": {senha:"1234", perfil:"CONSULTOR", filtro:"GABRIELA", nome:"GABRIELA"},
-  "FRANCIELLY": {senha:"1234", perfil:"CONSULTOR", filtro:"FRANCIELLY", nome:"FRANCIELLY"},
-  "MARCON": {senha:"1234", perfil:"CONSULTOR", filtro:"MARCON", nome:"MARCON"},
-  "JBS": {senha:"1234", perfil:"CLIENTE", filtro:"JBS", nome:"JBS"},
-  "CIPLAN": {senha:"1234", perfil:"CLIENTE", filtro:"CIPLAN", nome:"CIPLAN"}
-};
-
-let usuarioAtual = null;
-
-function normAcesso(v){
-  return String(v||"").trim().toUpperCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-}
-
-function podeVerFrota(v){
-  if(!usuarioAtual) return false;
-  if(usuarioAtual.perfil === "ADMIN") return true;
-
-  if(usuarioAtual.perfil === "CONSULTOR"){
-    return normAcesso(v.consultor) === normAcesso(usuarioAtual.filtro);
-  }
-
-  if(usuarioAtual.perfil === "CLIENTE"){
-    const filtro = normAcesso(usuarioAtual.filtro);
-    return normAcesso(v.origem).includes(filtro) || normAcesso(v.cliente).includes(filtro);
-  }
-
-  return false;
-}
-
-function podeVerAgendamento(a){
-  if(!usuarioAtual) return false;
-  if(usuarioAtual.perfil === "ADMIN") return true;
-
-  if(usuarioAtual.perfil === "CONSULTOR"){
-    return normAcesso(a.consultor) === normAcesso(usuarioAtual.filtro);
-  }
-
-  if(usuarioAtual.perfil === "CLIENTE"){
-    const filtro = normAcesso(usuarioAtual.filtro);
-    return normAcesso(a.cliente).includes(filtro);
-  }
-
-  return false;
-}
-
-function aplicarRestricoesInterface(){
-  const badge = document.getElementById("usuarioLogadoBadge");
-  const sair = document.getElementById("btnSair");
-
-  if(usuarioAtual && badge){
-    badge.style.display = "inline-block";
-    badge.innerText = usuarioAtual.nome + " • " + usuarioAtual.perfil;
-  }
-  if(usuarioAtual && sair){
-    sair.style.display = "inline-block";
-  }
-
-  // Cliente não precisa ver ranking geral de consultor
-  if(usuarioAtual && usuarioAtual.perfil === "CLIENTE"){
-    const botoes = document.querySelectorAll(".nav button");
-    botoes.forEach(btn => {
-      if((btn.innerText || "").toUpperCase().includes("RANKING")){
-        btn.style.display = "none";
-      }
-    });
-  }
-}
-
-function fazerLogin(){
-  const user = normAcesso(document.getElementById("loginUser").value);
-  const pass = String(document.getElementById("loginPass").value || "").trim();
-  const erro = document.getElementById("loginErro");
-
-  const config = USUARIOS_ACESSO[user];
-
-  if(config && config.senha === pass){
-    usuarioAtual = config;
-    sessionStorage.setItem("usuarioDashboard", JSON.stringify(config));
-    document.getElementById("loginOverlay").style.display = "none";
-    aplicarRestricoesInterface();
-    popularFiltros();
-    render();
-  } else {
-    erro.innerText = "Usuário ou senha inválidos.";
-  }
-}
-
-function sairSistema(){
-  sessionStorage.removeItem("usuarioDashboard");
-  location.reload();
-}
-
-function toggleMenu(){
-  const menu = document.querySelector("aside");
-  if(menu) menu.classList.toggle("open");
-}
-
-document.addEventListener("click", function(e){
-  const menu = document.querySelector("aside");
-  const btn = document.querySelector(".mobile-menu-btn");
-  if(!menu || !btn) return;
-  if(window.innerWidth <= 1100 && menu.classList.contains("open")){
-    if(!menu.contains(e.target) && !btn.contains(e.target)){
-      menu.classList.remove("open");
-    }
-  }
-});
-
-window.addEventListener("load", function(){
-  try{
-    const salvo = sessionStorage.getItem("usuarioDashboard");
-    if(salvo){
-      usuarioAtual = JSON.parse(salvo);
-      const overlay = document.getElementById("loginOverlay");
-      if(overlay) overlay.style.display = "none";
-      aplicarRestricoesInterface();
-      setTimeout(() => { popularFiltros(); render(); }, 400);
-    }
-  }catch(e){}
-});
-
-</script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 :root {
@@ -220,75 +93,9 @@ th { color:var(--muted); font-size:12px; text-transform:uppercase; }
 }
   .filters-grid,.kpis,.grid2 { grid-template-columns:1fr; }
 }
-
-/* ===== LOGIN + ACESSO POR PERFIL + MOBILE ===== */
-.mobile-topbar{display:none}
-.login-overlay{
-  position:fixed;inset:0;background:linear-gradient(135deg,#071a3d,#0f2f6b);
-  display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px
-}
-.login-card{
-  width:100%;max-width:420px;background:#fff;border-radius:28px;padding:30px;
-  box-shadow:0 24px 60px rgba(0,0,0,.28);text-align:center
-}
-.login-card h2{margin:0 0 6px;color:#0f2f6b;font-size:27px}
-.login-card p{margin:0 0 22px;color:#64748b;font-size:14px}
-.login-card input{margin-bottom:10px;height:46px}
-.login-card button{width:100%;margin-top:8px;height:46px}
-.login-error{color:#dc2626;font-size:13px;margin-top:10px;min-height:18px}
-.login-help{margin-top:12px;font-size:11px;color:#94a3b8}
-.user-pill{
-  font-size:12px;color:#0f2f6b;background:#dbeafe;border-radius:999px;
-  padding:7px 10px;font-weight:800
-}
-.btn-dark{background:#0f172a;color:white}
-.mobile-menu-btn{display:none}
-@media(max-width:1100px){
-  .app{display:block}
-  aside{position:fixed!important;left:-285px;top:0;bottom:0;width:275px!important;z-index:9998;transition:left .25s ease;overflow-y:auto}
-  aside.open{left:0}
-  .mobile-topbar{display:flex;position:sticky;top:0;z-index:9997;background:#0f2f6b;color:white;padding:12px 14px;align-items:center;justify-content:space-between;box-shadow:0 4px 18px rgba(15,47,107,.2)}
-  .mobile-topbar strong{font-size:16px}
-  .mobile-menu-btn{display:inline-flex;background:white;color:#0f2f6b;border:0;border-radius:12px;padding:9px 12px;font-weight:800}
-  main{padding:16px}
-  .top{margin-top:12px}
-  .top h2{font-size:25px}
-  .top p{font-size:13px}
-  .actions{width:100%;display:grid;grid-template-columns:1fr 1fr}
-  .actions .btn{width:100%;padding:12px 8px;font-size:13px}
-  .mini-status,.user-pill{grid-column:1/-1;text-align:center}
-  .filters{border-radius:18px;padding:12px}
-  .filters-grid{grid-template-columns:1fr!important;gap:8px}
-  .kpis{grid-template-columns:1fr 1fr!important;gap:10px}
-  .kpi{border-radius:18px;padding:14px}
-  .kpi span{font-size:11px}
-  .kpi strong{font-size:24px}
-  .kpi small{font-size:11px}
-  .grid2{grid-template-columns:1fr!important;gap:12px}
-  .card{border-radius:18px;padding:14px}
-  .card h3{font-size:17px}
-  canvas{max-height:260px}
-  .table-wrap{max-height:480px;border:1px solid #e5e7eb;border-radius:14px}
-  table{font-size:12px}
-  th,td{padding:9px}
-  .company-logo{width:225px!important}
-  .nav button{padding:13px 14px}
-  #rodape-update{left:10px!important;right:10px!important;text-align:center;bottom:6px!important;font-size:10px!important}
-}
-@media(max-width:520px){
-  .kpis{grid-template-columns:1fr!important}
-  .actions{grid-template-columns:1fr}
-  main{padding:12px}
-  .top h2{font-size:23px}
-}
-
 </style>
 </head>
 <body>
-<div class="mobile-topbar">
-  <button class="mobile-menu-btn" onclick="toggleMenu()">☰ Menu</button>
-  <strong>Controle de Frota</strong>
-</div>
 <div class="app">
 <aside>
   <div class="logo">
@@ -319,7 +126,7 @@ th { color:var(--muted); font-size:12px; text-transform:uppercase; }
       <button class="btn btn-blue" onclick="carregarGoogleSheets()">Atualizar base</button>
       <button class="btn btn-red" onclick="verCriticos()">Ver críticos</button>
       <button class="btn btn-light" onclick="limparFiltros()">Limpar filtros</button>
-      <span id="usuarioLogadoBadge" class="user-pill" style="display:none;"></span><button class="btn btn-dark" onclick="sairSistema()" id="btnSair" style="display:none;">Sair</button><span id="status" class="mini-status">Conectado ao Google Sheets</span>
+      <span id="status" class="mini-status">Conectado ao Google Sheets</span>
     </div>
   </div>
 
@@ -676,14 +483,11 @@ function fill(id,arr,label) {
 }
 
 function popularFiltros() {
-  const baseFrota = dados.filter(v => typeof podeVerFrota !== "function" || podeVerFrota(v));
-  const baseAg = agendamentosTodos.filter(v => typeof podeVerAgendamento !== "function" || podeVerAgendamento(v));
-
-  fill("filial",[...new Set(baseFrota.map(x=>x.filial))],"Todas as filiais");
-  fill("cliente",[...new Set(baseFrota.map(x=>x.cliente))],"Todos os clientes");
-  fill("consultor",[...new Set([...baseFrota.map(x=>x.consultor), ...baseAg.map(x=>x.consultor)])],"Todos consultores");
-  fill("situacao",[...new Set(baseFrota.map(x=>x.situacao))],"Todas situações");
-  fill("agendamento",[...new Set([...baseFrota.map(x=>x.agendamento), ...baseAg.map(x=>x.status)])],"Todos agendamentos");
+  fill("filial",[...new Set(dados.map(x=>x.filial))],"Todas as filiais");
+  fill("cliente",[...new Set(dados.map(x=>x.cliente))],"Todos os clientes");
+  fill("consultor",[...new Set([...dados.map(x=>x.consultor), ...agendamentosTodos.map(x=>x.consultor)])],"Todos consultores");
+  fill("situacao",[...new Set(dados.map(x=>x.situacao))],"Todas situações");
+  fill("agendamento",[...new Set([...dados.map(x=>x.agendamento), ...agendamentosTodos.map(x=>x.status)])],"Todos agendamentos");
 }
 
 function filtrados() {
@@ -695,8 +499,6 @@ function filtrados() {
   const a = document.getElementById("agendamento").value;
 
   return dados.filter(v => {
-    if (typeof podeVerFrota === "function" && !podeVerFrota(v)) return false;
-
     const texto = `${v.placa} ${v.chassi} ${v.cliente} ${v.filial} ${v.consultor}`.toLowerCase();
 
     const bateFiltros =
@@ -709,6 +511,7 @@ function filtrados() {
 
     if (!bateFiltros) return false;
 
+    // Ao filtrar SEM AGENDAMENTO, mostrar somente críticos e atenção.
     if (a === "SEM AGENDAMENTO") {
       return v.situacao === "REVISÃO IMEDIATA" || v.situacao === "REVISÃO EM ATENÇÃO";
     }
@@ -722,7 +525,6 @@ function filtrarAgendamentos() {
   const co = document.getElementById("consultor").value;
   const a = document.getElementById("agendamento").value;
   return agendamentosTodos.filter(v =>
-    (typeof podeVerAgendamento !== "function" || podeVerAgendamento(v)) &&
     (`${v.placa} ${v.cliente} ${v.consultor} ${v.status} ${v.situacaoFrota}`.toLowerCase().includes(b)) &&
     (!co || v.consultor === co) &&
     (!a || v.status === a)
@@ -898,7 +700,7 @@ function exportarRelatorio() {
 
 function renderAlertas(list) {
   const agendadosForaDaBase = agendamentosTodos
-    .filter(a => (typeof podeVerAgendamento !== "function" || podeVerAgendamento(a)) && !a.encontrado)
+    .filter(a => !a.encontrado)
     .map(a => ({
       tipo: "AGENDAMENTO_FORA_BASE",
       placa: a.placa,
@@ -955,8 +757,6 @@ function page(id,btn) {
   ["visao","frota","agendamentos","ranking","relatorio","alertas"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));
   document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("active"));
   btn.classList.add("active");
-  const menu = document.querySelector("aside");
-  if (menu && window.innerWidth <= 1100) menu.classList.remove("open");
 }
 function verCriticos() {
   const el = document.getElementById("situacao");
@@ -985,19 +785,6 @@ carregarGoogleSheets();
   z-index: 9999;
 ">
   Base atualizada em: -
-</div>
-
-
-<div id="loginOverlay" class="login-overlay">
-  <div class="login-card">
-    <h2>Acesso ao painel</h2>
-    <p>Informe seu usuário e senha para continuar.</p>
-    <input id="loginUser" placeholder="Usuário" autocomplete="username">
-    <input id="loginPass" type="password" placeholder="Senha" autocomplete="current-password" onkeydown="if(event.key==='Enter') fazerLogin()">
-    <button class="btn btn-blue" onclick="fazerLogin()">Entrar</button>
-    <div id="loginErro" class="login-error"></div>
-    <div class="login-help">Acesso interno controlado por perfil.</div>
-  </div>
 </div>
 
 </body>
