@@ -93,6 +93,19 @@ th { color:var(--muted); font-size:12px; text-transform:uppercase; }
 }
   .filters-grid,.kpis,.grid2 { grid-template-columns:1fr; }
 }
+
+/* ===== LOGIN FIREBASE PROFISSIONAL ===== */
+.login-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#071a3d,#0f2f6b);display:flex;align-items:center;justify-content:center;z-index:999999;padding:20px}
+.login-card{width:100%;max-width:430px;background:#fff;border-radius:28px;padding:30px;box-shadow:0 24px 70px rgba(0,0,0,.32);text-align:center}
+.login-card h2{margin:0 0 6px;color:#0f2f6b;font-size:28px}
+.login-card p{margin:0 0 22px;color:#64748b;font-size:14px}
+.login-card input{width:100%;height:46px;border:1px solid #d1d5db;border-radius:14px;padding:12px;margin-bottom:10px}
+.login-card button{width:100%;height:46px}
+.login-error{min-height:18px;color:#dc2626;font-size:13px;margin-top:10px}
+.user-pill{font-size:12px;color:#0f2f6b;background:#dbeafe;border-radius:999px;padding:8px 11px;font-weight:800}
+.btn-dark{background:#0f172a;color:#fff}
+@media(max-width:1100px){.user-pill,#btnSair{width:100%;text-align:center}}
+
 </style>
 </head>
 <body>
@@ -126,7 +139,7 @@ th { color:var(--muted); font-size:12px; text-transform:uppercase; }
       <button class="btn btn-blue" onclick="carregarGoogleSheets()">Atualizar base</button>
       <button class="btn btn-red" onclick="verCriticos()">Ver críticos</button>
       <button class="btn btn-light" onclick="limparFiltros()">Limpar filtros</button>
-      <span id="status" class="mini-status">Conectado ao Google Sheets</span>
+      <span id="usuarioLogadoBadge" class="user-pill" style="display:none;"></span><button class="btn btn-dark" onclick="sairSistema()" id="btnSair" style="display:none;">Sair</button><span id="status" class="mini-status">Conectado ao Google Sheets</span>
     </div>
   </div>
 
@@ -483,11 +496,14 @@ function fill(id,arr,label) {
 }
 
 function popularFiltros() {
-  fill("filial",[...new Set(dados.map(x=>x.filial))],"Todas as filiais");
-  fill("cliente",[...new Set(dados.map(x=>x.cliente))],"Todos os clientes");
-  fill("consultor",[...new Set([...dados.map(x=>x.consultor), ...agendamentosTodos.map(x=>x.consultor)])],"Todos consultores");
-  fill("situacao",[...new Set(dados.map(x=>x.situacao))],"Todas situações");
-  fill("agendamento",[...new Set([...dados.map(x=>x.agendamento), ...agendamentosTodos.map(x=>x.status)])],"Todos agendamentos");
+  const baseFrota = dados.filter(v => typeof podeVerFrota !== "function" || podeVerFrota(v));
+  const baseAg = agendamentosTodos.filter(v => typeof podeVerAgendamento !== "function" || podeVerAgendamento(v));
+
+  fill("filial",[...new Set(baseFrota.map(x=>x.filial))],"Todas as filiais");
+  fill("cliente",[...new Set(baseFrota.map(x=>x.cliente))],"Todos os clientes");
+  fill("consultor",[...new Set([...baseFrota.map(x=>x.consultor), ...baseAg.map(x=>x.consultor)])],"Todos consultores");
+  fill("situacao",[...new Set(baseFrota.map(x=>x.situacao))],"Todas situações");
+  fill("agendamento",[...new Set([...baseFrota.map(x=>x.agendamento), ...baseAg.map(x=>x.status)])],"Todos agendamentos");
 }
 
 function filtrados() {
@@ -499,6 +515,8 @@ function filtrados() {
   const a = document.getElementById("agendamento").value;
 
   return dados.filter(v => {
+    if (typeof podeVerFrota === "function" && !podeVerFrota(v)) return false;
+
     const texto = `${v.placa} ${v.chassi} ${v.cliente} ${v.filial} ${v.consultor}`.toLowerCase();
 
     const bateFiltros =
@@ -511,7 +529,6 @@ function filtrados() {
 
     if (!bateFiltros) return false;
 
-    // Ao filtrar SEM AGENDAMENTO, mostrar somente críticos e atenção.
     if (a === "SEM AGENDAMENTO") {
       return v.situacao === "REVISÃO IMEDIATA" || v.situacao === "REVISÃO EM ATENÇÃO";
     }
@@ -525,6 +542,7 @@ function filtrarAgendamentos() {
   const co = document.getElementById("consultor").value;
   const a = document.getElementById("agendamento").value;
   return agendamentosTodos.filter(v =>
+    (typeof podeVerAgendamento !== "function" || podeVerAgendamento(v)) &&
     (`${v.placa} ${v.cliente} ${v.consultor} ${v.status} ${v.situacaoFrota}`.toLowerCase().includes(b)) &&
     (!co || v.consultor === co) &&
     (!a || v.status === a)
@@ -700,7 +718,7 @@ function exportarRelatorio() {
 
 function renderAlertas(list) {
   const agendadosForaDaBase = agendamentosTodos
-    .filter(a => !a.encontrado)
+    .filter(a => (typeof podeVerAgendamento !== "function" || podeVerAgendamento(a)) && !a.encontrado)
     .map(a => ({
       tipo: "AGENDAMENTO_FORA_BASE",
       placa: a.placa,
@@ -720,19 +738,10 @@ function renderAlertas(list) {
     )
     .map(v => {
       const problemas = [];
-
       if (v.situacao === "KM DESATUALIZADO") problemas.push("KM desatualizado");
       if (!v.km || v.km === "-") problemas.push("KM vazio");
       if (!v.placaKey || v.placaKey.length !== 7) problemas.push("Placa suspeita");
-
-      return {
-        tipo: "FROTA",
-        placa: v.placa || "-",
-        cliente: v.cliente || "-",
-        filial: v.filial || "-",
-        situacao: v.situacao || "-",
-        problema: problemas.join(" | ")
-      };
+      return {tipo:"FROTA", placa:v.placa||"-", cliente:v.cliente||"-", filial:v.filial||"-", situacao:v.situacao||"-", problema:problemas.join(" | ")};
     });
 
   const alertas = [...alertasFrota, ...agendadosForaDaBase];
@@ -742,15 +751,7 @@ function renderAlertas(list) {
 
   document.getElementById("tblAlertas").innerHTML =
     `<thead><tr><th>Placa</th><th>Cliente</th><th>Filial</th><th>Situação</th><th>Problema</th></tr></thead><tbody>` +
-    alertas.map(v => `
-      <tr>
-        <td><b>${v.placa || "-"}</b></td>
-        <td>${v.cliente || "-"}</td>
-        <td>${v.filial || "-"}</td>
-        <td>${badge(v.situacao)}</td>
-        <td>${v.problema || "-"}</td>
-      </tr>
-    `).join("") + "</tbody>";
+    alertas.map(v => `<tr><td><b>${v.placa||"-"}</b></td><td>${v.cliente||"-"}</td><td>${v.filial||"-"}</td><td>${badge(v.situacao)}</td><td>${v.problema||"-"}</td></tr>`).join("") + "</tbody>";
 }
 
 function page(id,btn) {
@@ -786,6 +787,128 @@ carregarGoogleSheets();
 ">
   Base atualizada em: -
 </div>
+
+
+<div id="loginOverlay" class="login-overlay">
+  <div class="login-card">
+    <h2>Acesso ao painel</h2>
+    <p>Entre com o e-mail e senha cadastrados.</p>
+    <input id="loginEmail" type="email" placeholder="E-mail" autocomplete="username">
+    <input id="loginSenha" type="password" placeholder="Senha" autocomplete="current-password" onkeydown="if(event.key==='Enter') fazerLoginFirebase()">
+    <button class="btn btn-blue" onclick="fazerLoginFirebase()">Entrar</button>
+    <div id="loginErro" class="login-error"></div>
+  </div>
+</div>
+
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAwWr_g6NlT7Ewr4kON_8hz2sCN63vfojU",
+  authDomain: "frota-dashboard.firebaseapp.com",
+  projectId: "frota-dashboard",
+  storageBucket: "frota-dashboard.firebasestorage.app",
+  messagingSenderId: "8663643826",
+  appId: "1:8663643826:web:bdda5e8829315c8268bbab",
+  measurementId: "G-G96K6N5GGN"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+
+window.usuarioAtual = null;
+
+function normAcesso(v){
+  return String(v||"").trim().toUpperCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+}
+
+window.podeVerFrota = function(v){
+  const u = window.usuarioAtual;
+  if(!u) return false;
+  const tipo = normAcesso(u.TIPO || u.tipo);
+  const filtro = normAcesso(u.FILTRO || u.filtro);
+  if(tipo === "ADMIN") return true;
+  if(tipo === "CONSULTOR") return normAcesso(v.consultor) === filtro;
+  if(tipo === "CLIENTE") return normAcesso(v.origem).includes(filtro) || normAcesso(v.cliente).includes(filtro);
+  return false;
+};
+
+window.podeVerAgendamento = function(a){
+  const u = window.usuarioAtual;
+  if(!u) return false;
+  const tipo = normAcesso(u.TIPO || u.tipo);
+  const filtro = normAcesso(u.FILTRO || u.filtro);
+  if(tipo === "ADMIN") return true;
+  if(tipo === "CONSULTOR") return normAcesso(a.consultor) === filtro;
+  if(tipo === "CLIENTE") return normAcesso(a.cliente).includes(filtro);
+  return false;
+};
+
+function aplicarPerfilNaTela(){
+  const u = window.usuarioAtual;
+  if(!u) return;
+  const nome = u.NOME || u.nome || "USUÁRIO";
+  const tipo = u.TIPO || u.tipo || "PERFIL";
+  const badge = document.getElementById("usuarioLogadoBadge");
+  const sair = document.getElementById("btnSair");
+  if(badge){ badge.style.display = "inline-block"; badge.innerText = `${nome} • ${tipo}`; }
+  if(sair){ sair.style.display = "inline-block"; }
+  if(normAcesso(tipo) === "CLIENTE"){
+    document.querySelectorAll(".nav button").forEach(btn => {
+      if((btn.innerText || "").toUpperCase().includes("RANKING")) btn.style.display = "none";
+    });
+  }
+}
+
+window.fazerLoginFirebase = async function(){
+  const email = document.getElementById("loginEmail").value.trim();
+  const senha = document.getElementById("loginSenha").value.trim();
+  const erro = document.getElementById("loginErro");
+  erro.innerText = "";
+  try{
+    await signInWithEmailAndPassword(auth, email, senha);
+  }catch(e){
+    console.error(e);
+    erro.innerText = "E-mail ou senha inválidos.";
+  }
+};
+
+window.sairSistema = async function(){
+  await signOut(auth);
+  location.reload();
+};
+
+onAuthStateChanged(auth, async (user) => {
+  const overlay = document.getElementById("loginOverlay");
+  if(!user){
+    if(overlay) overlay.style.display = "flex";
+    return;
+  }
+  try{
+    const snap = await getDoc(doc(db, "USUARIOS", user.uid));
+    if(!snap.exists()){
+      alert("Usuário autenticado, mas sem perfil criado na coleção USUARIOS.");
+      await signOut(auth);
+      return;
+    }
+    window.usuarioAtual = snap.data();
+    if(overlay) overlay.style.display = "none";
+    aplicarPerfilNaTela();
+    setTimeout(() => {
+      if(typeof popularFiltros === "function") popularFiltros();
+      if(typeof render === "function") render();
+    }, 700);
+  }catch(e){
+    console.error(e);
+    alert("Erro ao buscar perfil do usuário no Firestore.");
+  }
+});
+</script>
 
 </body>
 </html>
