@@ -497,14 +497,27 @@ function filtrados() {
   const co = document.getElementById("consultor").value;
   const s = document.getElementById("situacao").value;
   const a = document.getElementById("agendamento").value;
-  return dados.filter(v =>
-    (`${v.placa} ${v.chassi} ${v.cliente} ${v.filial} ${v.consultor}`.toLowerCase().includes(b)) &&
-    (!f || v.filial === f) &&
-    (!c || v.cliente === c) &&
-    (!co || v.consultor === co) &&
-    (!s || v.situacao === s) &&
-    (!a || v.agendamento === a)
-  );
+
+  return dados.filter(v => {
+    const texto = `${v.placa} ${v.chassi} ${v.cliente} ${v.filial} ${v.consultor}`.toLowerCase();
+
+    const bateFiltros =
+      texto.includes(b) &&
+      (!f || v.filial === f) &&
+      (!c || v.cliente === c) &&
+      (!co || v.consultor === co) &&
+      (!s || v.situacao === s) &&
+      (!a || v.agendamento === a);
+
+    if (!bateFiltros) return false;
+
+    // Ao filtrar SEM AGENDAMENTO, mostrar somente críticos e atenção.
+    if (a === "SEM AGENDAMENTO") {
+      return v.situacao === "REVISÃO IMEDIATA" || v.situacao === "REVISÃO EM ATENÇÃO";
+    }
+
+    return true;
+  });
 }
 
 function filtrarAgendamentos() {
@@ -686,14 +699,58 @@ function exportarRelatorio() {
 }
 
 function renderAlertas(list) {
-  const agNaoEncontrados = agendamentosTodos.filter(a=>!a.encontrado);
-  const alertas = list.filter(v=>!v.placaKey || v.placaKey.length!==7 || !v.situacao || !v.km || !v.consultor || v.agendamento==="SEM AGENDAMENTO");
-  document.getElementById("boxAlertas").innerHTML = `<div class="alert"><b>${alertas.length}</b> registros da frota precisam de atenção.<br><b>${agNaoEncontrados.length}</b> agendamentos têm placa que não está na base de frota.</div>`;
-  document.getElementById("tblAlertas").innerHTML = `<thead><tr><th>Placa</th><th>Cliente</th><th>Filial</th><th>Problema</th></tr></thead><tbody>` +
-  alertas.map(v=> {
-    const p=[]; if(!v.placaKey || v.placaKey.length!==7) p.push("Placa suspeita"); if(!v.situacao) p.push("Situação vazia"); if(!v.km) p.push("KM vazio"); if(!v.consultor) p.push("Consultor vazio"); if(v.agendamento==="SEM AGENDAMENTO") p.push("Sem agendamento");
-    return `<tr><td><b>${v.placa||"-"}</b></td><td>${v.cliente}</td><td>${v.filial||"-"}</td><td>${p.join(" | ")}</td></tr>`;
-  }).join("") + "</tbody>";
+  const agendadosForaDaBase = agendamentosTodos
+    .filter(a => !a.encontrado)
+    .map(a => ({
+      tipo: "AGENDAMENTO_FORA_BASE",
+      placa: a.placa,
+      cliente: a.cliente || "-",
+      filial: "-",
+      situacao: "PLACA NÃO ENCONTRADA NA FROTA",
+      problema: "Veículo agendado e não encontrado na base"
+    }));
+
+  const alertasFrota = list
+    .filter(v =>
+      v.situacao === "KM DESATUALIZADO" ||
+      !v.km ||
+      v.km === "-" ||
+      !v.placaKey ||
+      v.placaKey.length !== 7
+    )
+    .map(v => {
+      const problemas = [];
+
+      if (v.situacao === "KM DESATUALIZADO") problemas.push("KM desatualizado");
+      if (!v.km || v.km === "-") problemas.push("KM vazio");
+      if (!v.placaKey || v.placaKey.length !== 7) problemas.push("Placa suspeita");
+
+      return {
+        tipo: "FROTA",
+        placa: v.placa || "-",
+        cliente: v.cliente || "-",
+        filial: v.filial || "-",
+        situacao: v.situacao || "-",
+        problema: problemas.join(" | ")
+      };
+    });
+
+  const alertas = [...alertasFrota, ...agendadosForaDaBase];
+
+  document.getElementById("boxAlertas").innerHTML =
+    `<div class="alert"><b>${alertas.length}</b> registros precisam de atenção: KM desatualizado, KM vazio, veículos agendados fora da base ou placa suspeita.</div>`;
+
+  document.getElementById("tblAlertas").innerHTML =
+    `<thead><tr><th>Placa</th><th>Cliente</th><th>Filial</th><th>Situação</th><th>Problema</th></tr></thead><tbody>` +
+    alertas.map(v => `
+      <tr>
+        <td><b>${v.placa || "-"}</b></td>
+        <td>${v.cliente || "-"}</td>
+        <td>${v.filial || "-"}</td>
+        <td>${badge(v.situacao)}</td>
+        <td>${v.problema || "-"}</td>
+      </tr>
+    `).join("") + "</tbody>";
 }
 
 function page(id,btn) {
