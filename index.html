@@ -1245,45 +1245,81 @@ window.abrirPainelComPerfil = async function(perfil) {
   }
 };
 
+
+window.mostrarErroLogin = function(msg) {
+  const erro = document.getElementById("loginErro");
+  if (erro) erro.innerText = msg;
+  console.error("LOGIN:", msg);
+};
+
+window.abrirPainelComPerfil = async function(perfil) {
+  window.usuarioAtual = perfil;
+
+  const overlay = document.getElementById("loginOverlay");
+  if (overlay) overlay.style.display = "none";
+
+  if (typeof aplicarPerfilNaTela === "function") aplicarPerfilNaTela();
+
+  try {
+    if (typeof carregarGoogleSheets === "function") {
+      await carregarGoogleSheets();
+    }
+  } catch (e) {
+    console.warn("Falha ao recarregar Google Sheets:", e);
+  }
+
+  try {
+    if (typeof popularFiltros === "function") popularFiltros();
+    if (typeof render === "function") render();
+  } catch (e) {
+    console.error("Erro ao renderizar:", e);
+  }
+};
+
 window.fazerLoginFirebase = async function(){
   const email = document.getElementById("loginEmail").value.trim();
   const senha = document.getElementById("loginSenha").value.trim();
   const erro = document.getElementById("loginErro");
 
-  erro.innerText = "Entrando...";
+  if (!email || !senha) {
+    erro.innerText = "Informe e-mail e senha.";
+    return;
+  }
+
+  erro.innerText = "Entrando no Firebase...";
 
   try {
     const cred = await signInWithEmailAndPassword(auth, email, senha);
-
-    erro.innerText = "Validando perfil...";
-
     const uid = cred.user.uid;
-    console.log("LOGIN OK UID:", uid);
+
+    erro.innerText = "Login OK. Buscando perfil...";
 
     const snap = await getDoc(doc(db, "USUARIOS", uid));
 
     if (!snap.exists()) {
-      erro.innerText = "";
-      alert("Login feito, mas este usuário não tem perfil cadastrado na coleção USUARIOS. Confira se o ID do documento é o UID correto.");
+      erro.innerText = "Usuário logado, mas sem perfil no Firestore. Verifique se o UID do documento está igual ao UID do Authentication.";
       await signOut(auth);
       return;
     }
 
     const perfil = snap.data();
-    console.log("PERFIL ENCONTRADO:", perfil);
 
-    erro.innerText = "Carregando painel...";
+    erro.innerText = "Perfil encontrado. Abrindo painel...";
 
     await window.abrirPainelComPerfil(perfil);
 
   } catch (e) {
-    console.error("ERRO LOGIN/FIRESTORE:", e);
-    erro.innerText = "";
+    console.error("ERRO DETALHADO:", e);
+    const code = e && e.code ? e.code : "";
 
-    if (String(e.code || "").includes("auth")) {
-      alert("E-mail ou senha inválidos.");
+    if (code.includes("auth/invalid-credential") || code.includes("auth/wrong-password") || code.includes("auth/user-not-found")) {
+      erro.innerText = "E-mail ou senha inválidos.";
+    } else if (code.includes("permission-denied")) {
+      erro.innerText = "Sem permissão no Firestore. Vá em Firestore > Regras e publique a regra de leitura para USUARIOS.";
+    } else if (code.includes("unavailable")) {
+      erro.innerText = "Firebase indisponível no momento. Tente novamente.";
     } else {
-      alert("Não consegui validar o perfil no Firestore. Confira regras, coleção USUARIOS e UID do usuário.");
+      erro.innerText = "Erro: " + (code || e.message || "falha desconhecida");
     }
   }
 };
@@ -1301,7 +1337,6 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-  // Se já abriu via botão de login, não faz nada.
   if (window.usuarioAtual) return;
 
   try {
@@ -1309,6 +1344,8 @@ onAuthStateChanged(auth, async (user) => {
 
     if (!snap.exists()) {
       if (overlay) overlay.style.display = "flex";
+      const erro = document.getElementById("loginErro");
+      if (erro) erro.innerText = "Sessão ativa, mas perfil não encontrado em USUARIOS.";
       return;
     }
 
@@ -1317,6 +1354,8 @@ onAuthStateChanged(auth, async (user) => {
   } catch (e) {
     console.error("Erro ao restaurar sessão:", e);
     if (overlay) overlay.style.display = "flex";
+    const erro = document.getElementById("loginErro");
+    if (erro) erro.innerText = "Erro ao restaurar sessão: " + (e.code || e.message || "verifique Firestore/Regras.");
   }
 });
 </script>
