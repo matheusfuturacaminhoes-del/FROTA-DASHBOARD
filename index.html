@@ -24,12 +24,18 @@
 body { margin:0; font-family:Segoe UI, Arial, sans-serif; background:var(--bg); color:var(--text); }
 .app { display:flex; min-height:100vh; }
 aside {
-  width:280px; background:linear-gradient(180deg,#0f2f6b,#071a3d); color:white;
-  padding:26px; display:flex; flex-direction:column; gap:20px;
+  width:250px; background:linear-gradient(180deg,#0f2f6b,#071a3d); color:white;
+  padding:18px 22px; display:flex; flex-direction:column; gap:14px;
 }
 .logo { margin-bottom:10px; }
 .logo h1 { margin:0; font-size:23px; }
-.company-logo { width:220px; max-width:100%; display:block; object-fit:contain; margin-bottom:14px; }
+.company-logo {
+  width:245px;
+  max-width:100%;
+  display:block;
+  object-fit:contain;
+  margin:0 auto 8px auto;
+}
 .logo p { margin:6px 0 18px; color:#bfdbfe; font-size:13px; }
 .nav button {
   width:100%; border:0; background:transparent; color:#dbeafe; padding:14px 16px;
@@ -81,7 +87,10 @@ th { color:var(--muted); font-size:12px; text-transform:uppercase; }
 .footer { color:var(--muted); font-size:12px; text-align:right; margin-top:10px; }
 @media(max-width:1100px) {
   .app { flex-direction:column; }
-  aside { width:100%; }
+  aside {
+  width:250px; background:linear-gradient(180deg,#0f2f6b,#071a3d); color:white;
+  padding:18px 22px; display:flex; flex-direction:column; gap:14px;
+}
   .filters-grid,.kpis,.grid2 { grid-template-columns:1fr; }
 }
 </style>
@@ -98,9 +107,13 @@ th { color:var(--muted); font-size:12px; text-transform:uppercase; }
     <button onclick="page('frota',this)">Frota Detalhada</button>
     <button onclick="page('agendamentos',this)">Agendamentos</button>
     <button onclick="page('ranking',this)">Ranking</button>
-    <button onclick="page('alertas',this)">Alertas</button>
+    <button onclick="page('relatorio',this)">Relatório</button>
+      <button onclick="page('alertas',this)">Alertas</button>
   </div>
-  <div class="side-note">Painel executivo conectado ao Google Sheets, com atualização automática da base.</div>
+  <div class="side-note">
+  <b>Dúvidas ou agendamento?</b><br>
+  WhatsApp: <b>(62) 3311-9620</b>
+</div>
 </aside>
 
 <main>
@@ -113,7 +126,7 @@ th { color:var(--muted); font-size:12px; text-transform:uppercase; }
       <button class="btn btn-blue" onclick="carregarGoogleSheets()">Atualizar base</button>
       <button class="btn btn-red" onclick="verCriticos()">Ver críticos</button>
       <button class="btn btn-light" onclick="limparFiltros()">Limpar filtros</button>
-      <span id="status" class="mini-status">Base conectada ao Google Sheets</span>
+      <span id="status" class="mini-status">Conectado ao Google Sheets</span>
     </div>
   </div>
 
@@ -157,6 +170,20 @@ th { color:var(--muted); font-size:12px; text-transform:uppercase; }
     <div class="grid2">
       <div class="card"><h3>Ranking por Consultor</h3><canvas id="chartRanking"></canvas></div>
       <div class="card"><h3>Indicadores por Consultor</h3><div class="table-wrap"><table id="tblRanking"></table></div></div>
+    </div>
+  </section>
+
+  
+  <section id="relatorio" class="hidden">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+        <div>
+          <h3 style="margin-bottom:4px;">Relatório filtrado</h3>
+          <p style="margin:0;color:var(--muted);font-size:13px;">Use os filtros acima e exporte somente os registros exibidos.</p>
+        </div>
+        <button class="btn btn-blue" onclick="exportarRelatorio()">Exportar relatório</button>
+      </div>
+      <div class="table-wrap"><table id="tblRelatorio"></table></div>
     </div>
   </section>
 
@@ -246,7 +273,12 @@ function padAgendamento(s) {
 }
 
 
-const GOOGLE_SHEETS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSorKSwAqLkJX3__OIXGmc2dsHtsnQKPdc8aK9ErbUBfo3Tqf0Go6-WwG86YYp64zlwSQ5GJyLG_9O8/pub?output=csv";
+const GOOGLE_SHEETS_URLS = {
+  "JBS": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSorKSwAqLkJX3__OIXGmc2dsHtsnQKPdc8aK9ErbUBfo3Tqf0Go6-WwG86YYp64zlwSQ5GJyLG_9O8/pub?gid=0&single=true&output=csv",
+  "CIPLAN": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSorKSwAqLkJX3__OIXGmc2dsHtsnQKPdc8aK9ErbUBfo3Tqf0Go6-WwG86YYp64zlwSQ5GJyLG_9O8/pub?gid=1365789410&single=true&output=csv",
+  "GERAL": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSorKSwAqLkJX3__OIXGmc2dsHtsnQKPdc8aK9ErbUBfo3Tqf0Go6-WwG86YYp64zlwSQ5GJyLG_9O8/pub?gid=1738339728&single=true&output=csv",
+  "AGENDAMENTO": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSorKSwAqLkJX3__OIXGmc2dsHtsnQKPdc8aK9ErbUBfo3Tqf0Go6-WwG86YYp64zlwSQ5GJyLG_9O8/pub?gid=1809844218&single=true&output=csv"
+};
 
 function parseCSV(text) {
   const rows = [];
@@ -283,100 +315,100 @@ function parseCSV(text) {
 }
 
 function montarRowCSV(headers, arr, linha) {
-  return {
-    headers: headers.map(normKey),
-    arr,
-    linha
-  };
+  return { headers: headers.map(normKey), arr, linha };
+}
+
+async function buscarCSV(nome, url) {
+  const finalUrl = url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
+  const res = await fetch(finalUrl);
+  if (!res.ok) throw new Error("Erro ao carregar " + nome);
+  const txt = await res.text();
+  const matriz = parseCSV(txt);
+  if (!matriz.length) return [];
+
+  let headerRow = 0;
+  for (let i = 0; i < Math.min(15, matriz.length); i++) {
+    const vals = matriz[i].map(normKey);
+    if (vals.includes("PLACA") || vals.includes("PLACALIMPA")) {
+      headerRow = i;
+      break;
+    }
+  }
+
+  const headers = matriz[headerRow];
+  return matriz.slice(headerRow + 1)
+    .filter(arr => arr.some(v => norm(v) !== ""))
+    .map((arr, idx) => montarRowCSV(headers, arr, headerRow + idx + 2));
 }
 
 async function carregarGoogleSheets() {
   const statusEl = document.getElementById("status");
+
   try {
     statusEl.innerHTML = "Atualizando base...";
-    const url = GOOGLE_SHEETS_CSV_URL + (GOOGLE_SHEETS_CSV_URL.includes("?") ? "&" : "?") + "t=" + Date.now();
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Não foi possível carregar o Google Sheets.");
-    const txt = await res.text();
-
-    const matriz = parseCSV(txt);
-    if (!matriz.length) throw new Error("Planilha vazia.");
-
-    let headerRow = 0;
-    for (let i = 0; i < Math.min(15, matriz.length); i++) {
-      const vals = matriz[i].map(normKey);
-      if (vals.includes("PLACA") || vals.includes("PLACALIMPA")) {
-        headerRow = i;
-        break;
-      }
-    }
-
-    const headersOriginais = matriz[headerRow];
-    const rows = matriz.slice(headerRow + 1)
-      .filter(arr => arr.some(v => norm(v) !== ""))
-      .map((arr, idx) => montarRowCSV(headersOriginais, arr, headerRow + idx + 2));
-
     dados = [];
     agendamentosTodos = [];
 
+    const [jbsRows, ciplanRows, geralRows, agRows] = await Promise.all([
+      buscarCSV("JBS", GOOGLE_SHEETS_URLS.JBS),
+      buscarCSV("CIPLAN", GOOGLE_SHEETS_URLS.CIPLAN),
+      buscarCSV("GERAL", GOOGLE_SHEETS_URLS.GERAL),
+      buscarCSV("AGENDAMENTO", GOOGLE_SHEETS_URLS.AGENDAMENTO)
+    ]);
+
     const agMap = {};
 
-    rows.forEach(r => {
+    agRows.forEach(r => {
       const placa = valor(r, ["PLACA", "PLACA LIMPA", "PLACA_LIMPA"]);
       const pk = plateKey(placa);
       if (!pk) return;
 
-      const statusBruto = valor(r, [
-        "AGENDAMENTO",
-        "STATUS",
-        "STATUS AGENDAMENTO",
-        "STATUS_AGENDAMENTO",
-        "SITUACAO AGENDAMENTO",
-        "SITUAÇÃO AGENDAMENTO"
-      ]);
-
-      const statusAg = padAgendamento(statusBruto);
-
-      if (statusAg && statusAg !== "SEM AGENDAMENTO") {
-        const item = {
-          placa: norm(placa),
-          placaKey: pk,
-          cliente: norm(valor(r, ["CLIENTE"])),
-          data: norm(valor(r, ["DATA", "DATA AGENDAMENTO", "DATA_AGENDAMENTO"])),
-          status: statusAg,
-          consultor: norm(valor(r, ["CONSULTOR", "CONSULTOR AGENDAMENTO", "CONSULTOR_AGENDAMENTO"]))
-        };
-        agendamentosTodos.push(item);
-        agMap[pk] = item;
-      }
-    });
-
-    rows.forEach(r => {
-      let placa = valor(r, ["PLACA"]);
-      if (!plateKey(placa)) placa = valor(r, ["PLACA LIMPA", "PLACA_LIMPA"]);
-      const pk = plateKey(placa);
-      const chassi = valor(r, ["CHASSI"]);
-      if (!pk && !norm(chassi)) return;
-
-      const ag = agMap[pk] || {};
-      const sitOriginal = valor(r, ["SITUACAO", "SITUAÇÃO"]);
-
-      dados.push({
-        origem: norm(valor(r, ["ORIGEM", "BASE", "CLIENTE ORIGEM", "CLIENTE_ORIGEM"])) || norm(valor(r, ["CLIENTE"])) || "GERAL",
+      const item = {
         placa: norm(placa),
         placaKey: pk,
-        chassi: norm(chassi),
-        cliente: norm(valor(r, ["CLIENTE"])) || "GERAL",
-        filial: norm(valor(r, ["FILIAL", "FILIAL ULTIMA REVISAO", "FILIAL ÚLTIMA REVISÃO"])),
-        consultor: norm(valor(r, ["CONSULTOR"])) || ag.consultor || "",
-        km: norm(valor(r, ["KM ATUAL", "KM_ATUAL", "KM/HORIMETRO ATUAL", "KM/HORÍMETRO ATUAL"])),
-        prox: norm(valor(r, ["PROXIMA REVISAO", "PROXIMA REVISÃO", "PROXIMA_REVISAO", "PROXIMA_REVISAO_KM", "PROXIMA REVISÃO KM", "PROXIMA REVISAO KM"])),
-        situacao: padSituacao(sitOriginal),
-        situacaoOriginal: norm(sitOriginal),
-        agendamento: ag.status || "SEM AGENDAMENTO",
-        dataAgendamento: ag.data || ""
-      });
+        cliente: norm(valor(r, ["CLIENTE"])),
+        data: norm(valor(r, ["DATA", "DATA AGENDAMENTO", "DATA_AGENDAMENTO"])),
+        status: padAgendamento(valor(r, ["STATUS", "STATUS AGENDAMENTO", "STATUS_AGENDAMENTO", "AGENDAMENTO"])),
+        consultor: norm(valor(r, ["CONSULTOR", "CONSULTOR AGENDAMENTO", "CONSULTOR_AGENDAMENTO"]))
+      };
+
+      agendamentosTodos.push(item);
+      agMap[pk] = item;
     });
+
+    function adicionarFrota(rows, origemPadrao) {
+      rows.forEach(r => {
+        let placa = valor(r, ["PLACA"]);
+        if (!plateKey(placa)) placa = valor(r, ["PLACA LIMPA", "PLACA_LIMPA"]);
+
+        const pk = plateKey(placa);
+        const chassi = valor(r, ["CHASSI"]);
+        if (!pk && !norm(chassi)) return;
+
+        const ag = agMap[pk] || {};
+        const sitOriginal = valor(r, ["SITUACAO", "SITUAÇÃO"]);
+
+        dados.push({
+          origem: origemPadrao,
+          placa: norm(placa),
+          placaKey: pk,
+          chassi: norm(chassi),
+          cliente: norm(valor(r, ["CLIENTE"])) || origemPadrao,
+          filial: norm(valor(r, ["FILIAL", "FILIAL ULTIMA REVISAO", "FILIAL ÚLTIMA REVISÃO"])),
+          consultor: norm(valor(r, ["CONSULTOR"])) || ag.consultor || "",
+          km: norm(valor(r, ["KM ATUAL", "KM_ATUAL", "KM/HORIMETRO ATUAL", "KM/HORÍMETRO ATUAL"])),
+          prox: norm(valor(r, ["PROXIMA REVISAO", "PROXIMA REVISÃO", "PROXIMA_REVISAO", "PROXIMA_REVISAO_KM", "PROXIMA REVISÃO KM", "PROXIMA REVISAO KM"])),
+          situacao: padSituacao(sitOriginal),
+          situacaoOriginal: norm(sitOriginal),
+          agendamento: ag.status || "SEM AGENDAMENTO",
+          dataAgendamento: ag.data || ""
+        });
+      });
+    }
+
+    adicionarFrota(jbsRows, "JBS");
+    adicionarFrota(ciplanRows, "CIPLAN");
+    adicionarFrota(geralRows, "GERAL");
 
     const placasFrota = new Set(dados.map(x => x.placaKey).filter(Boolean));
     agendamentosTodos = agendamentosTodos.map(a => ({
@@ -391,7 +423,7 @@ async function carregarGoogleSheets() {
   } catch (err) {
     console.error(err);
     statusEl.innerHTML = "Erro ao carregar Google Sheets";
-    alert("Não consegui carregar a base do Google Sheets. Confirme se ela está publicada como CSV.");
+    alert("Não consegui carregar as bases do Google Sheets. Confirme se as 4 abas estão publicadas como CSV.");
   }
 }
 
@@ -447,27 +479,10 @@ function pct(n,d) { return d ? Math.round((n/d)*100) : 0; }
 
 function corPorIndicador(label) {
   const l = normKey(label);
-
-  // Cinza = dado sem informação confiável
-  if(l.includes("KMDESATUALIZADO") || l.includes("SEMSINAL") || l.includes("SEMACESSO") || l.includes("SEMAGENDAMENTO")) {
-    return "#64748b";
-  }
-
-  // Vermelho = problema real/crítico
-  if(l.includes("IMEDIATA") || l.includes("CRITICA") || l.includes("ATRASADA") || l.includes("NAOCOMPARECEU") || l.includes("PLACANAOENCONTRADA")) {
-    return "#dc2626";
-  }
-
-  // Amarelo = atenção
-  if(l.includes("ATENCAO") || l.includes("AGUARDANDO") || l.includes("AGENDAR")) {
-    return "#f59e0b";
-  }
-
-  // Verde = bom
-  if(l.includes("CONFORMIDADE") || l.includes("COMPARECEU") || l.includes("FINALIZADO") || l.includes("PLACANAFROTA")) {
-    return "#16a34a";
-  }
-
+  if(l.includes("KMDESATUALIZADO") || l.includes("SEMSINAL") || l.includes("SEMACESSO") || l.includes("SEMAGENDAMENTO")) return "#64748b";
+  if(l.includes("IMEDIATA") || l.includes("CRITICA") || l.includes("ATRASADA") || l.includes("NAOCOMPARECEU") || l.includes("PLACANAOENCONTRADA")) return "#dc2626";
+  if(l.includes("ATENCAO") || l.includes("AGUARDANDO") || l.includes("AGENDAR")) return "#f59e0b";
+  if(l.includes("CONFORMIDADE") || l.includes("COMPARECEU") || l.includes("FINALIZADO") || l.includes("PLACANAFROTA")) return "#16a34a";
   return "#2563eb";
 }
 function cores(obj) { return Object.keys(obj).map(corPorIndicador); }
@@ -529,6 +544,7 @@ function render() {
   const ranking = rankingData(list, ags);
   chartBar("chartRanking",Object.fromEntries(ranking.map(r=>[r.consultor,r.totalAgendamentos])));
   tableFrota("tblFrota",list);
+  tableRelatorio("tblRelatorio",list);
   tableAgendamentos("tblAg",ags);
   tableRanking(ranking);
   renderAlertas(list);
@@ -567,6 +583,39 @@ function tableRanking(rows) {
   rows.map((r,i)=>`<tr><td><b>#${i+1} ${r.consultor}</b></td><td>${r.totalFrota}</td><td>${r.totalAgendamentos}</td><td>${r.compareceu}</td><td>${r.agendado}</td><td>${r.nao}</td><td>${r.aguardando}</td><td><b>${r.taxa}%</b></td></tr>`).join("") + "</tbody>";
 }
 
+
+function tableRelatorio(id,list) {
+  document.getElementById(id).innerHTML = `<thead><tr><th>Origem</th><th>Placa</th><th>Chassi</th><th>Cliente</th><th>Filial</th><th>Consultor</th><th>KM atual</th><th>Próx. revisão</th><th>Situação</th><th>Agendamento</th><th>Data agendamento</th></tr></thead><tbody>` +
+  list.map(v=>`<tr><td>${v.origem||"-"}</td><td><b>${v.placa||"-"}</b></td><td>${v.chassi||"-"}</td><td>${v.cliente||"-"}</td><td>${v.filial||"-"}</td><td>${v.consultor||"-"}</td><td>${v.km||"-"}</td><td>${v.prox||"-"}</td><td>${badge(v.situacao)}</td><td>${v.agendamento||"-"}</td><td>${v.dataAgendamento||"-"}</td></tr>`).join("") + "</tbody>";
+}
+
+function csvEscape(valor) {
+  const s = String(valor ?? "");
+  if (s.includes(";") || s.includes('"') || s.includes("\\n") || s.includes("\\r")) {
+    return '"' + s.replace(/"/g,'""') + '"';
+  }
+  return s;
+}
+
+function exportarRelatorio() {
+  const list = filtrados();
+  const headers = ["ORIGEM","PLACA","CHASSI","CLIENTE","FILIAL","CONSULTOR","KM ATUAL","PROXIMA REVISAO","SITUACAO","AGENDAMENTO","DATA AGENDAMENTO"];
+  const linhas = list.map(v => [
+    v.origem, v.placa, v.chassi, v.cliente, v.filial, v.consultor, v.km, v.prox, v.situacao, v.agendamento, v.dataAgendamento
+  ].map(csvEscape).join(";"));
+  const csv = "\\ufeff" + headers.join(";") + "\\n" + linhas.join("\\n");
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const data = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = "relatorio_frota_" + data + ".csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function renderAlertas(list) {
   const agNaoEncontrados = agendamentosTodos.filter(a=>!a.encontrado);
   const alertas = list.filter(v=>!v.placaKey || v.placaKey.length!==7 || !v.situacao || !v.km || !v.consultor || v.agendamento==="SEM AGENDAMENTO");
@@ -579,7 +628,7 @@ function renderAlertas(list) {
 }
 
 function page(id,btn) {
-  ["visao","frota","agendamentos","ranking","alertas"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));
+  ["visao","frota","agendamentos","ranking","relatorio","alertas"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));
   document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("active"));
   btn.classList.add("active");
 }
