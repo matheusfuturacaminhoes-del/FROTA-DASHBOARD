@@ -106,6 +106,359 @@ th { color:var(--muted); font-size:12px; text-transform:uppercase; }
 .btn-dark{background:#0f172a;color:#fff}
 @media(max-width:1100px){.user-pill,#btnSair{width:100%;text-align:center}}
 
+
+/* ===== TORRE DE CONTROLE | LOGIN PREMIUM + MOBILE ===== */
+:root {
+  --navy-deep:#061a3d;
+  --navy:#0f2f6b;
+  --blue-accent:#2563eb;
+  --soft-bg:#eef4fb;
+  --white-glass:rgba(255,255,255,.88);
+}
+
+.login-overlay {
+  position:fixed !important;
+  inset:0 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  padding:28px !important;
+  z-index:999999 !important;
+  background:
+    linear-gradient(115deg, rgba(4,18,48,.96) 0%, rgba(8,35,82,.90) 42%, rgba(8,35,82,.50) 100%),
+    url("https://www.transportabrasil.com.br/wp-content/uploads/2021/05/meteor-1000-02.jpg") center center / cover no-repeat !important;
+}
+
+.login-overlay::before {
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(37,99,235,.22), transparent 32%),
+    linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,0));
+  pointer-events:none;
+}
+
+.login-card {
+  position:relative;
+  width:100%;
+  max-width:470px !important;
+  background:rgba(255,255,255,.92) !important;
+  backdrop-filter:blur(18px);
+  border:1px solid rgba(255,255,255,.55);
+  border-radius:30px !important;
+  padding:34px !important;
+  box-shadow:0 32px 90px rgba(0,0,0,.38) !important;
+  text-align:left !important;
+}
+
+.login-card::before {
+  content:"";
+  display:block;
+  width:62px;
+  height:5px;
+  border-radius:999px;
+  background:linear-gradient(90deg,#2563eb,#0f2f6b);
+  margin-bottom:18px;
+}
+
+.login-card h2 {
+  margin:0 0 8px !important;
+  color:#071a3d !important;
+  font-size:34px !important;
+  line-height:1.08 !important;
+  letter-spacing:-.8px;
+}
+
+.login-card h2::before {
+  content:"Torre de Controle";
+}
+
+.login-card h2 {
+  font-size:0 !important;
+}
+
+.login-card h2::before {
+  font-size:34px !important;
+}
+
+.login-card p {
+  margin:0 0 24px !important;
+  color:#475569 !important;
+  font-size:14px !important;
+  line-height:1.5;
+}
+
+.login-card p::after {
+  content:"Acompanhamento seguro de frota, revisões e agendamentos.";
+}
+
+.login-card p {
+  font-size:0 !important;
+}
+
+.login-card p::after {
+  font-size:14px !important;
+}
+
+.login-card input {
+  height:50px !important;
+  border-radius:16px !important;
+  border:1px solid #cbd5e1 !important;
+  background:#fff !important;
+  padding:0 15px !important;
+  font-size:14px !important;
+  outline:none !important;
+  transition:.2s ease;
+}
+
+.login-card input:focus {
+  border-color:#2563eb !important;
+  box-shadow:0 0 0 4px rgba(37,99,235,.13);
+}
+
+.login-card button {
+  height:50px !important;
+  border-radius:16px !important;
+  background:linear-gradient(135deg,#2563eb,#0f2f6b) !important;
+  box-shadow:0 14px 30px rgba(37,99,235,.25);
+  letter-spacing:.2px;
+}
+
+.login-error {
+  text-align:center;
+  margin-top:12px !important;
+}
+
+.login-card::after {
+  content:"Futura Caminhões • VW Caminhões e Ônibus";
+  display:block;
+  margin-top:18px;
+  padding-top:16px;
+  border-top:1px solid #e2e8f0;
+  color:#64748b;
+  font-size:12px;
+  text-align:center;
+}
+
+.mobile-topbar-premium {
+  display:none;
+}
+
+.mobile-menu-btn-premium {
+  border:0;
+  background:#fff;
+  color:#0f2f6b;
+  border-radius:14px;
+  padding:10px 13px;
+  font-weight:900;
+  box-shadow:0 8px 22px rgba(2,6,23,.12);
+}
+
+@media (max-width: 1180px) {
+  body {
+    overflow-x:hidden !important;
+  }
+
+  .app {
+    display:block !important;
+    min-height:100vh;
+  }
+
+  aside {
+    position:fixed !important;
+    left:-292px !important;
+    top:0 !important;
+    bottom:0 !important;
+    width:280px !important;
+    z-index:9998 !important;
+    overflow-y:auto !important;
+    transition:left .25s ease !important;
+    box-shadow:20px 0 40px rgba(2,6,23,.25);
+  }
+
+  aside.open {
+    left:0 !important;
+  }
+
+  .mobile-topbar-premium {
+    display:flex !important;
+    position:sticky;
+    top:0;
+    z-index:9997;
+    background:linear-gradient(135deg,#071a3d,#0f2f6b);
+    color:#fff;
+    align-items:center;
+    justify-content:space-between;
+    padding:12px 14px;
+    box-shadow:0 10px 30px rgba(15,47,107,.25);
+  }
+
+  .mobile-topbar-premium strong {
+    font-size:16px;
+    letter-spacing:-.2px;
+  }
+
+  main {
+    margin-left:0 !important;
+    width:100% !important;
+    padding:14px !important;
+  }
+
+  .top, header, .header, .topbar {
+    flex-direction:column !important;
+    align-items:flex-start !important;
+    gap:10px !important;
+  }
+
+  .top h1, .top h2, main h1, main h2 {
+    font-size:25px !important;
+    line-height:1.15 !important;
+  }
+
+  .top p, main p {
+    font-size:13px !important;
+  }
+
+  .actions {
+    width:100% !important;
+    display:grid !important;
+    grid-template-columns:1fr 1fr !important;
+    gap:8px !important;
+  }
+
+  .actions .btn, .btn {
+    min-height:43px;
+    border-radius:14px !important;
+    font-size:13px !important;
+  }
+
+  .mini-status, #status, .user-pill, #btnSair {
+    width:100% !important;
+    text-align:center !important;
+  }
+
+  .filters, .filter-box {
+    border-radius:20px !important;
+    padding:12px !important;
+    margin-bottom:12px !important;
+  }
+
+  .filters-grid {
+    grid-template-columns:1fr !important;
+    gap:8px !important;
+  }
+
+  input, select {
+    width:100% !important;
+    min-height:44px !important;
+    font-size:14px !important;
+    border-radius:14px !important;
+  }
+
+  .kpis {
+    grid-template-columns:1fr 1fr !important;
+    gap:10px !important;
+  }
+
+  .kpi {
+    padding:14px !important;
+    border-radius:20px !important;
+    min-height:104px !important;
+  }
+
+  .kpi span {
+    font-size:11px !important;
+  }
+
+  .kpi strong {
+    font-size:25px !important;
+  }
+
+  .grid2, .grid-2, .dashboard-grid {
+    grid-template-columns:1fr !important;
+    gap:12px !important;
+  }
+
+  .card {
+    border-radius:20px !important;
+    padding:14px !important;
+    overflow:hidden !important;
+  }
+
+  .card h3 {
+    font-size:17px !important;
+  }
+
+  canvas {
+    max-height:260px !important;
+  }
+
+  .table-wrap {
+    width:100% !important;
+    overflow:auto !important;
+    max-height:520px !important;
+    border:1px solid #e5e7eb;
+    border-radius:16px;
+  }
+
+  table {
+    min-width:880px !important;
+    font-size:12px !important;
+  }
+
+  th,td {
+    padding:9px !important;
+    white-space:nowrap;
+  }
+
+  .company-logo {
+    width:220px !important;
+    max-width:100% !important;
+  }
+
+  .nav button {
+    padding:13px 14px !important;
+    border-radius:14px !important;
+  }
+
+  #rodape-update {
+    left:10px !important;
+    right:10px !important;
+    bottom:6px !important;
+    text-align:center !important;
+    font-size:10px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .login-overlay {
+    align-items:flex-end !important;
+    padding:16px !important;
+  }
+
+  .login-card {
+    padding:24px !important;
+    border-radius:26px !important;
+  }
+
+  .login-card h2::before {
+    font-size:29px !important;
+  }
+
+  .kpis {
+    grid-template-columns:1fr !important;
+  }
+
+  .actions {
+    grid-template-columns:1fr !important;
+  }
+
+  main {
+    padding:12px !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -906,6 +1259,24 @@ onAuthStateChanged(auth, async (user) => {
   }catch(e){
     console.error(e);
     alert("Erro ao buscar perfil do usuário no Firestore.");
+  }
+});
+</script>
+
+
+<script>
+function toggleMenuMobile(){
+  const menu = document.querySelector("aside");
+  if(menu) menu.classList.toggle("open");
+}
+document.addEventListener("click", function(e){
+  const menu = document.querySelector("aside");
+  const btn = document.querySelector(".mobile-menu-btn-premium");
+  if(!menu || !btn) return;
+  if(window.innerWidth <= 1180 && menu.classList.contains("open")){
+    if(!menu.contains(e.target) && !btn.contains(e.target)){
+      menu.classList.remove("open");
+    }
   }
 });
 </script>
