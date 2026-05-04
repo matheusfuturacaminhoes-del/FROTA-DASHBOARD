@@ -94,7 +94,6 @@ th { color:var(--muted); font-size:12px; text-transform:uppercase; }
   .filters-grid,.kpis,.grid2 { grid-template-columns:1fr; }
 }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -645,37 +644,45 @@ function csvEscape(valor) {
 }
 
 function exportarRelatorio() {
-  const list = filtrados();
+  try {
+    const list = filtrados();
 
-  const dadosExcel = list.map(v => ({
-    ORIGEM: v.origem || "-",
-    PLACA: v.placa || "-",
-    CHASSI: v.chassi || "-",
-    CLIENTE: v.cliente || "-",
-    FILIAL: v.filial || "-",
-    CONSULTOR: v.consultor || "-",
-    "KM ATUAL": v.km || "-",
-    "PROXIMA REVISAO": v.prox || "-",
-    SITUACAO: v.situacao || "-",
-    AGENDAMENTO: v.agendamento || "-",
-    "DATA AGENDAMENTO": v.dataAgendamento || "-"
-  }));
+    if (!list || list.length === 0) {
+      alert("Nenhum registro encontrado para exportar.");
+      return;
+    }
 
-  const worksheet = XLSX.utils.json_to_sheet(dadosExcel);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Relatorio");
+    const dadosExcel = list.map(v => ({
+      "ORIGEM": v.origem || "-",
+      "PLACA": v.placa || "-",
+      "CHASSI": v.chassi || "-",
+      "CLIENTE": v.cliente || "-",
+      "FILIAL": v.filial || "-",
+      "CONSULTOR": v.consultor || "-",
+      "KM ATUAL": v.km || "-",
+      "PROXIMA REVISAO": v.prox || "-",
+      "SITUACAO": v.situacao || "-",
+      "AGENDAMENTO": v.agendamento || "-",
+      "DATA AGENDAMENTO": v.dataAgendamento || "-"
+    }));
 
-  XLSX.writeFile(workbook, "relatorio_frota.xlsx");
-});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const data = new Date().toISOString().slice(0,10);
-  a.href = url;
-  a.download = "relatorio_frota_" + data + ".csv";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+    const worksheet = XLSX.utils.json_to_sheet(dadosExcel);
+
+    // Ajusta largura das colunas
+    worksheet["!cols"] = [
+      {wch:14}, {wch:12}, {wch:22}, {wch:30}, {wch:18}, {wch:20},
+      {wch:14}, {wch:18}, {wch:22}, {wch:18}, {wch:18}
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Relatorio");
+
+    const hoje = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(workbook, "relatorio_frota_" + hoje + ".xlsx");
+  } catch (erro) {
+    console.error("Erro ao exportar relatório:", erro);
+    alert("Erro ao exportar relatório. Atualize a página e tente novamente.");
+  }
 }
 
 function renderAlertas(list) {
