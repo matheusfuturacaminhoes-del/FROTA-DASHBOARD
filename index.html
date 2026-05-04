@@ -1219,30 +1219,50 @@ function aplicarPerfilNaTela(){
 }
 
 
-window.abrirPainelComPerfil = async function(perfil) {
+window.abrirPainelComPerfil = function(perfil) {
   window.usuarioAtual = perfil;
 
   const overlay = document.getElementById("loginOverlay");
   if (overlay) overlay.style.display = "none";
 
+  const erro = document.getElementById("loginErro");
+  if (erro) erro.innerText = "";
+
   if (typeof aplicarPerfilNaTela === "function") {
-    aplicarPerfilNaTela();
+    try { aplicarPerfilNaTela(); } catch(e) { console.warn("aplicarPerfilNaTela:", e); }
   }
 
-  try {
-    if (typeof carregarGoogleSheets === "function") {
-      await carregarGoogleSheets();
-    }
-  } catch (e) {
-    console.warn("Falha ao recarregar Google Sheets após login:", e);
-  }
-
+  // Renderiza imediatamente com o que já existir
   try {
     if (typeof popularFiltros === "function") popularFiltros();
     if (typeof render === "function") render();
   } catch (e) {
-    console.error("Erro ao renderizar painel:", e);
+    console.warn("Render inicial:", e);
   }
+
+  // Depois atualiza as bases em segundo plano
+  setTimeout(() => {
+    try {
+      if (typeof carregarGoogleSheets === "function") {
+        carregarGoogleSheets()
+          .then(() => {
+            try {
+              if (typeof popularFiltros === "function") popularFiltros();
+              if (typeof render === "function") render();
+            } catch(e2) {
+              console.warn("Render após carregar base:", e2);
+            }
+          })
+          .catch(err => {
+            console.error("Erro ao carregar Google Sheets:", err);
+            const status = document.getElementById("status");
+            if (status) status.innerHTML = "Erro ao carregar base do Google Sheets";
+          });
+      }
+    } catch (e) {
+      console.error("Falha no carregamento em segundo plano:", e);
+    }
+  }, 300);
 };
 
 
@@ -1286,27 +1306,26 @@ window.fazerLoginFirebase = async function(){
     return;
   }
 
-  erro.innerText = "Entrando no Firebase...";
+  erro.innerText = "Entrando...";
 
   try {
     const cred = await signInWithEmailAndPassword(auth, email, senha);
     const uid = cred.user.uid;
 
-    erro.innerText = "Login OK. Buscando perfil...";
+    erro.innerText = "Validando perfil...";
 
     const snap = await getDoc(doc(db, "USUARIOS", uid));
 
     if (!snap.exists()) {
-      erro.innerText = "Usuário logado, mas sem perfil no Firestore. Verifique se o UID do documento está igual ao UID do Authentication.";
+      erro.innerText = "Usuário logado, mas sem perfil no Firestore. Confira se o ID do documento é o UID correto.";
       await signOut(auth);
       return;
     }
 
     const perfil = snap.data();
+    erro.innerText = "Abrindo painel...";
 
-    erro.innerText = "Perfil encontrado. Abrindo painel...";
-
-    await window.abrirPainelComPerfil(perfil);
+    window.abrirPainelComPerfil(perfil);
 
   } catch (e) {
     console.error("ERRO DETALHADO:", e);
@@ -1315,9 +1334,7 @@ window.fazerLoginFirebase = async function(){
     if (code.includes("auth/invalid-credential") || code.includes("auth/wrong-password") || code.includes("auth/user-not-found")) {
       erro.innerText = "E-mail ou senha inválidos.";
     } else if (code.includes("permission-denied")) {
-      erro.innerText = "Sem permissão no Firestore. Vá em Firestore > Regras e publique a regra de leitura para USUARIOS.";
-    } else if (code.includes("unavailable")) {
-      erro.innerText = "Firebase indisponível no momento. Tente novamente.";
+      erro.innerText = "Sem permissão no Firestore. Verifique Firestore > Regras.";
     } else {
       erro.innerText = "Erro: " + (code || e.message || "falha desconhecida");
     }
