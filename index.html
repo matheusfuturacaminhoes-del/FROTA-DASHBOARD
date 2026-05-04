@@ -4,7 +4,38 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard Diretoria - Controle de Frota</title>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js">
+function toggleMenu() {
+  const menu = document.querySelector("aside");
+  if (menu) menu.classList.toggle("open");
+}
+document.addEventListener("click", function(e) {
+  const menu = document.querySelector("aside");
+  const btn = document.querySelector(".mobile-menu-btn");
+  if (!menu || !btn) return;
+  if (window.innerWidth <= 1100 && menu.classList.contains("open")) {
+    if (!menu.contains(e.target) && !btn.contains(e.target)) menu.classList.remove("open");
+  }
+});
+function fazerLogin() {
+  const usuario = document.getElementById("loginUser").value.trim().toLowerCase();
+  const senha = document.getElementById("loginPass").value.trim();
+  const erro = document.getElementById("loginErro");
+  if (usuario === "futura" && senha === "1234") {
+    sessionStorage.setItem("dashboardLogado", "sim");
+    document.getElementById("loginOverlay").style.display = "none";
+  } else {
+    erro.innerText = "Usuário ou senha inválidos.";
+  }
+}
+window.addEventListener("load", function() {
+  if (sessionStorage.getItem("dashboardLogado") === "sim") {
+    const overlay = document.getElementById("loginOverlay");
+    if (overlay) overlay.style.display = "none";
+  }
+});
+
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 :root {
@@ -93,9 +124,63 @@ th { color:var(--muted); font-size:12px; text-transform:uppercase; }
 }
   .filters-grid,.kpis,.grid2 { grid-template-columns:1fr; }
 }
+
+/* ===== MELHORIAS MOBILE + LOGIN ===== */
+.mobile-topbar{display:none}
+.login-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#071a3d,#0f2f6b);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px}
+.login-card{width:100%;max-width:390px;background:#fff;border-radius:26px;padding:28px;box-shadow:0 20px 50px rgba(0,0,0,.25);text-align:center}
+.login-card h2{margin:0 0 6px;color:#0f2f6b;font-size:26px}
+.login-card p{margin:0 0 20px;color:#64748b;font-size:14px}
+.login-card input{margin-bottom:10px}
+.login-card button{width:100%;margin-top:8px}
+.login-error{color:#dc2626;font-size:13px;margin-top:10px;min-height:18px}
+.mobile-menu-btn{display:none}
+@media(max-width:1100px){
+  .app{display:block}
+  aside{position:fixed!important;left:-285px;top:0;bottom:0;width:275px!important;z-index:9998;transition:left .25s ease;overflow-y:auto}
+  aside.open{left:0}
+  .mobile-topbar{display:flex;position:sticky;top:0;z-index:9997;background:#0f2f6b;color:white;padding:12px 14px;align-items:center;justify-content:space-between;box-shadow:0 4px 18px rgba(15,47,107,.2)}
+  .mobile-topbar strong{font-size:16px}
+  .mobile-menu-btn{display:inline-flex;background:white;color:#0f2f6b;border:0;border-radius:12px;padding:9px 12px;font-weight:800}
+  main{padding:16px}
+  .top{margin-top:12px}
+  .top h2{font-size:25px}
+  .top p{font-size:13px}
+  .actions{width:100%;display:grid;grid-template-columns:1fr 1fr}
+  .actions .btn{width:100%;padding:12px 8px;font-size:13px}
+  .mini-status{grid-column:1/-1;text-align:center}
+  .filters{border-radius:18px;padding:12px}
+  .filters-grid{grid-template-columns:1fr!important;gap:8px}
+  .kpis{grid-template-columns:1fr 1fr!important;gap:10px}
+  .kpi{border-radius:18px;padding:14px}
+  .kpi span{font-size:11px}
+  .kpi strong{font-size:24px}
+  .kpi small{font-size:11px}
+  .grid2{grid-template-columns:1fr!important;gap:12px}
+  .card{border-radius:18px;padding:14px}
+  .card h3{font-size:17px}
+  canvas{max-height:260px}
+  .table-wrap{max-height:480px;border:1px solid #e5e7eb;border-radius:14px}
+  table{font-size:12px}
+  th,td{padding:9px}
+  .company-logo{width:225px!important}
+  .nav button{padding:13px 14px}
+  #rodape-update{left:10px!important;right:10px!important;text-align:center;bottom:6px!important;font-size:10px!important}
+}
+@media(max-width:520px){
+  .kpis{grid-template-columns:1fr!important}
+  .actions{grid-template-columns:1fr}
+  main{padding:12px}
+  .top h2{font-size:23px}
+}
+
 </style>
 </head>
 <body>
+<div class="mobile-topbar">
+  <button class="mobile-menu-btn" onclick="toggleMenu()">☰ Menu</button>
+  <strong>Controle de Frota</strong>
+</div>
 <div class="app">
 <aside>
   <div class="logo">
@@ -757,6 +842,8 @@ function page(id,btn) {
   ["visao","frota","agendamentos","ranking","relatorio","alertas"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));
   document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("active"));
   btn.classList.add("active");
+  const menu = document.querySelector("aside");
+  if (menu && window.innerWidth <= 1100) menu.classList.remove("open");
 }
 function verCriticos() {
   const el = document.getElementById("situacao");
@@ -787,5 +874,18 @@ carregarGoogleSheets();
   Base atualizada em: -
 </div>
 
+
+<div id="loginOverlay" class="login-overlay">
+  <div class="login-card">
+    <h2>Acesso interno</h2>
+    <p>Informe usuário e senha para acessar o painel.</p>
+    <input id="loginUser" placeholder="Usuário" autocomplete="username">
+    <input id="loginPass" type="password" placeholder="Senha" autocomplete="current-password" onkeydown="if(event.key==='Enter') fazerLogin()">
+    <button class="btn btn-blue" onclick="fazerLogin()">Entrar</button>
+    <div id="loginErro" class="login-error"></div>
+  </div>
+</div>
+
 </body>
 </html>
+
