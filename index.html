@@ -94,6 +94,7 @@ th { color:var(--muted); font-size:12px; text-transform:uppercase; }
   .filters-grid,.kpis,.grid2 { grid-template-columns:1fr; }
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -645,12 +646,27 @@ function csvEscape(valor) {
 
 function exportarRelatorio() {
   const list = filtrados();
-  const headers = ["ORIGEM","PLACA","CHASSI","CLIENTE","FILIAL","CONSULTOR","KM ATUAL","PROXIMA REVISAO","SITUACAO","AGENDAMENTO","DATA AGENDAMENTO"];
-  const linhas = list.map(v => [
-    v.origem, v.placa, v.chassi, v.cliente, v.filial, v.consultor, v.km, v.prox, v.situacao, v.agendamento, v.dataAgendamento
-  ].map(csvEscape).join(","));
-  const csv = "\\ufeff" + headers.join(",") + "\\n" + linhas.join("\\n");
-  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+
+  const dadosExcel = list.map(v => ({
+    ORIGEM: v.origem || "-",
+    PLACA: v.placa || "-",
+    CHASSI: v.chassi || "-",
+    CLIENTE: v.cliente || "-",
+    FILIAL: v.filial || "-",
+    CONSULTOR: v.consultor || "-",
+    "KM ATUAL": v.km || "-",
+    "PROXIMA REVISAO": v.prox || "-",
+    SITUACAO: v.situacao || "-",
+    AGENDAMENTO: v.agendamento || "-",
+    "DATA AGENDAMENTO": v.dataAgendamento || "-"
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(dadosExcel);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Relatorio");
+
+  XLSX.writeFile(workbook, "relatorio_frota.xlsx");
+});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   const data = new Date().toISOString().slice(0,10);
