@@ -1222,9 +1222,10 @@ window.fazerLoginFirebase = async function(){
   const email = document.getElementById("loginEmail").value.trim();
   const senha = document.getElementById("loginSenha").value.trim();
   const erro = document.getElementById("loginErro");
-  erro.innerText = "";
+  erro.innerText = "Entrando...";
   try{
     await signInWithEmailAndPassword(auth, email, senha);
+    erro.innerText = "Validando acesso...";
   }catch(e){
     console.error(e);
     erro.innerText = "E-mail ou senha inválidos.";
@@ -1238,27 +1239,57 @@ window.sairSistema = async function(){
 
 onAuthStateChanged(auth, async (user) => {
   const overlay = document.getElementById("loginOverlay");
-  if(!user){
-    if(overlay) overlay.style.display = "flex";
+
+  if (!user) {
+    console.log("NÃO LOGADO");
+    if (overlay) overlay.style.display = "flex";
     return;
   }
-  try{
+
+  console.log("USUÁRIO LOGADO:", user.uid);
+
+  try {
     const snap = await getDoc(doc(db, "USUARIOS", user.uid));
-    if(!snap.exists()){
+
+    if (!snap.exists()) {
       alert("Usuário autenticado, mas sem perfil criado na coleção USUARIOS.");
       await signOut(auth);
       return;
     }
+
     window.usuarioAtual = snap.data();
-    if(overlay) overlay.style.display = "none";
-    aplicarPerfilNaTela();
-    setTimeout(() => {
-      if(typeof popularFiltros === "function") popularFiltros();
-      if(typeof render === "function") render();
-    }, 700);
-  }catch(e){
-    console.error(e);
-    alert("Erro ao buscar perfil do usuário no Firestore.");
+
+    console.log("PERFIL DO USUÁRIO:", window.usuarioAtual);
+
+    if (overlay) overlay.style.display = "none";
+
+    if (typeof aplicarPerfilNaTela === "function") {
+      aplicarPerfilNaTela();
+    }
+
+    // Força recarregar base e renderizar após o login
+    setTimeout(async () => {
+      try {
+        if (typeof carregarGoogleSheets === "function") {
+          await carregarGoogleSheets();
+        } else {
+          if (typeof popularFiltros === "function") popularFiltros();
+          if (typeof render === "function") render();
+        }
+      } catch (e) {
+        console.error("Erro ao carregar/renderizar após login:", e);
+        try {
+          if (typeof popularFiltros === "function") popularFiltros();
+          if (typeof render === "function") render();
+        } catch (e2) {
+          console.error("Erro final ao renderizar:", e2);
+        }
+      }
+    }, 600);
+
+  } catch (e) {
+    console.error("ERRO FIRESTORE:", e);
+    alert("Erro ao buscar perfil do usuário no Firestore. Confira as regras e se o UID está cadastrado em USUARIOS.");
   }
 });
 </script>
